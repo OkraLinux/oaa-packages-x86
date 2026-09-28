@@ -1,17 +1,23 @@
-OAA base packages
+OAA packages x86_64
 
-OkraLinux x86_64 基础软件包的构建源
+OkraLinux x86_64 基础软件包的构建产物
 
-packages 目录每个 conf 是一个包的配方
+packages 是配方，scripts 是构建脚本
 
-scripts/build-package.sh 读配方，下载源码，编译成 x86_64，打包成 oaa
+out 里每个包一个文件夹，只放 sources 和 sha256
 
-scripts/publish.sh 把配方和产物推到 OkraLinux/oaa-packages-x86
+oaa 本体在 Release 里，tag 是 packages
 
-push 到 main 触发 actions 全量构建，也可以手动指定单个包
+构建
 
-产物在 oaa-packages-x86 仓库的 out 目录
+push 到 main 会触发全量构建，也可以在 actions 里手动指定单个包
 
-加一个新包，在 packages 里加一个 conf 就行，不用改 workflow
+    bash scripts/build-package.sh grep
 
-构建机是 ubuntu-24.04，产物就是 x86_64
+必须在 x86_64 的 linux 上跑
+
+加包就在 packages 里加一个 conf，脚本会自动收集
+
+依赖关系写在 conf 的 Dependencies 里
+
+源码没有进仓库，sources 里记的是地址和哈希

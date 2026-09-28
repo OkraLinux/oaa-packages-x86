@@ -110,14 +110,20 @@ done
 } > "$PackageDirectory/meta.yaml"
 
 ArchiveName="${Name}-${Version}-${Release}.x86_64.oaa"
-PackageOutput="$OutputDirectory/$Name"
+ArtifactDirectory="${RUNNER_TEMP:-/tmp}/okra-artifacts"
+PackageOutput="$ArtifactDirectory/$Name"
 rm -rf "$PackageOutput"
 mkdir -p "$PackageOutput"
 cd "$PackageDirectory"
 tar --zstd -cf "$PackageOutput/$ArchiveName" meta.yaml rootfs scripts
 cd "$PackageOutput"
 sha256sum "$ArchiveName" > "${ArchiveName}.sha256"
-echo "${SourceSum}  ${Url}" > "${Name}-${Version}-${Release}.sources"
+
+MetadataOutput="$OutputDirectory/$Name"
+rm -rf "$MetadataOutput"
+mkdir -p "$MetadataOutput"
+cp -f "${ArchiveName}.sha256" "$MetadataOutput/"
+echo "${SourceSum}  ${Url}" > "$MetadataOutput/${Name}-${Version}-${Release}.sources"
 
 echo "== built $ArchiveName"
 cat "${ArchiveName}.sha256"

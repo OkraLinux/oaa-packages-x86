@@ -1,33 +1,53 @@
 #!/bin/bash
 set -euo pipefail
 
-Organization=OkraLinux
-Repository=oaa-packages-x86
-SourceDirectory="$(cd "$(dirname "$0")/.." && pwd)"
-WorkDirectory="${RUNNER_TEMP:-/tmp}/okra-publish"
-Token="${PublishToken:?missing PublishToken}"
+RepositorySlug="${GITHUB_REPOSITORY:-OkraLinux/oaa-packages-x86}"
+ReleaseTag="${ReleaseTag:-packages}"
+ArtifactRoot="${1:-out}"
+Token="${GH_TOKEN:-${PublishToken:-}}"
 
-rm -rf "$WorkDirectory"
-git clone --depth 1 "https://x-access-token:${Token}@github.com/${Organization}/${Repository}.git" "$WorkDirectory"
+[ -n "$Token" ] || { echo "missing GH_TOKEN" >&2; exit 1; }
 
-mkdir -p "$WorkDirectory/packages" "$WorkDirectory/scripts"
-cp -f "$SourceDirectory"/packages/*.conf "$WorkDirectory/packages/"
-cp -f "$SourceDirectory"/scripts/build-package.sh "$WorkDirectory/scripts/"
+Api="https://api.github.com/repos/${RepositorySlug}"
 
-rm -rf "$WorkDirectory/out"
-mkdir -p "$WorkDirectory/out"
-cp -a "$SourceDirectory"/out/. "$WorkDirectory/out/"
-
-cd "$WorkDirectory"
+echo "== syncing checksums"
 git config user.name "OkraLinux Build"
 git config user.email "build@okralinux.cn"
 git add -A
-
 if git diff --cached --quiet; then
-	echo "nothing to publish"
-	exit 0
+	echo "no metadata change"
+else
+	git commit -m "update checksums"
+	git push
 fi
 
-git commit -m "update oaa packages"
-git push origin HEAD:main
-echo "published to ${Organization}/${Repository}"
+echo "== uploading artifacts to release ${ReleaseTag}"
+ReleaseId="$(curl -sS -H "Authorization: Bearer ${Token}" -H "Accept: application/vnd.github+json" "${Api}/releases/tags/${ReleaseTag}" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("id",""))')"
+
+if [ -z "$ReleaseId" ]; then
+	echo "creating release ${ReleaseTag}"
+	curl -sS -X POST -H "Authorization: Bearer ${Token}" -H "Accept: application/vnd.github+json" \
+		"${Api}/releases" \
+		-d "{\"tag_name\":\"${ReleaseTag}\",\"name\":\"${ReleaseTag}\",\"body\":\"OAA packages\"}" > /dev/null
+	ReleaseId="$(curl -sS -H "Authorization: Bearer ${Token}" -H "Accept: application/vnd.github+json" "${Api}/releases/tags/${ReleaseTag}" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("id",""))')"
+fi
+
+[ -n "$ReleaseId" ] || { echo "cannot resolve release" >&2; exit 1; }
+echo "release id ${ReleaseId}"
+
+Uploaded=0
+while IFS= read -r Archive; do
+	[ -f "$Archive" ] || continue
+	ArchiveName="$(basename "$Archive")"
+	Existing="$(curl -sS -H "Authorization: Bearer ${Token}" -H "Accept: application/vnd.github+json" "${Api}/releases/${ReleaseId}/assets?per_page=100" \
+		| python3 -c "import json,sys; print(' '.join(str(a['id']) for a in json.load(sys.stdin) if a['name']=='${ArchiveName}'))")"
+	for AssetId in $Existing; do
+		curl -sS -X DELETE -H "Authorization: Bearer ${Token}" -H "Accept: application/vnd.github+json" "${Api}/releases/assets/${AssetId}" > /dev/null
+	done
+	UploadUrl="https://uploads.github.com/repos/${RepositorySlug}/releases/${ReleaseId}/assets?name=${ArchiveName}"
+	curl -sS -X POST -H "Authorization: Bearer ${Token}" -H "Content-Type: application/octet-stream" --data-binary "@${Archive}" "$UploadUrl" > /dev/null
+	echo "uploaded $ArchiveName"
+	Uploaded=$((Uploaded + 1))
+done < <(find "$ArtifactRoot" -name '*.oaa' | sort)
+
+echo "uploaded ${Uploaded} files to ${RepositorySlug} release ${ReleaseTag}"
