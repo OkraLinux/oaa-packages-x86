@@ -13,7 +13,7 @@ Api="https://api.github.com/repos/${RepositorySlug}"
 echo "== syncing checksums"
 git config user.name "OkraLinux Build"
 git config user.email "build@okralinux.cn"
-git add -A
+git add packages scripts out README.md .gitignore 2>/dev/null || true
 if git diff --cached --quiet; then
 	echo "no metadata change"
 else

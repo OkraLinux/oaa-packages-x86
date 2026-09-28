@@ -77,6 +77,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p out
-          [ -d collected/okra-artifacts ] && cp -a collected/okra-artifacts/. out/ || true
+          [ -d collected/_temp/okra-artifacts ] && cp -a collected/_temp/okra-artifacts/. out/ || true
           [ -d collected/out ] && cp -a collected/out/. out/ || true
-          bash scripts/publish.sh
+          bash scripts/publish.sh out
