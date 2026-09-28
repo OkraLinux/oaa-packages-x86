@@ -110,11 +110,14 @@ done
 } > "$PackageDirectory/meta.yaml"
 
 ArchiveName="${Name}-${Version}-${Release}.x86_64.oaa"
+PackageOutput="$OutputDirectory/$Name"
+rm -rf "$PackageOutput"
+mkdir -p "$PackageOutput"
 cd "$PackageDirectory"
-tar --zstd -cf "$OutputDirectory/$ArchiveName" meta.yaml rootfs scripts
-cd "$OutputDirectory"
+tar --zstd -cf "$PackageOutput/$ArchiveName" meta.yaml rootfs scripts
+cd "$PackageOutput"
 sha256sum "$ArchiveName" > "${ArchiveName}.sha256"
-echo "${SourceSum}  ${Url}" > "$OutputDirectory/${Name}-${Version}-${Release}.sources"
+echo "${SourceSum}  ${Url}" > "${Name}-${Version}-${Release}.sources"
 
 echo "== built $ArchiveName"
 cat "${ArchiveName}.sha256"
