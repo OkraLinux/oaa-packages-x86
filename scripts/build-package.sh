@@ -125,6 +125,9 @@ mkdir -p "$MetadataOutput"
 cp -f "${ArchiveName}.sha256" "$MetadataOutput/"
 echo "${SourceSum}  ${Url}" > "$MetadataOutput/${Name}-${Version}-${Release}.sources"
 
+cp -f "${ArchiveName}.sha256" "$PackageOutput/"
+echo "${SourceSum}  ${Url}" > "$PackageOutput/${Name}-${Version}-${Release}.sources"
+
 echo "== built $ArchiveName"
 cat "${ArchiveName}.sha256"
 head -c 400 "$PackageDirectory/meta.yaml"
