@@ -48,7 +48,10 @@ if [ -n "$Sha256" ] && [ "$Sha256" != "$SourceSum" ]; then
 fi
 
 mkdir -p "$SourceDirectory"
-tar -xf "$Archive" -C "$SourceDirectory" --strip-components=1
+case "${ArchiveFormat:-auto}" in
+	lz) lzip -dc "$Archive" | tar -xf - -C "$SourceDirectory" --strip-components=1 ;;
+	*) tar -xf "$Archive" -C "$SourceDirectory" --strip-components=1 ;;
+esac
 
 if declare -f Build > /dev/null; then
 	echo "== custom build"
@@ -124,8 +127,6 @@ rm -rf "$MetadataOutput"
 mkdir -p "$MetadataOutput"
 cp -f "${ArchiveName}.sha256" "$MetadataOutput/"
 echo "${SourceSum}  ${Url}" > "$MetadataOutput/${Name}-${Version}-${Release}.sources"
-
-cp -f "${ArchiveName}.sha256" "$PackageOutput/"
 echo "${SourceSum}  ${Url}" > "$PackageOutput/${Name}-${Version}-${Release}.sources"
 
 echo "== built $ArchiveName"
