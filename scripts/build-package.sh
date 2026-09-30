@@ -58,6 +58,7 @@ mkdir -p "$SourceDirectory"
 case "${ArchiveFormat:-auto}" in
 	lz) lzip -dc "$Archive" | tar -xf - -C "$SourceDirectory" --strip-components=1 ;;
 	plain) cp -f "$Archive" "$SourceDirectory/" ;;
+	flat) tar -xf "$Archive" -C "$SourceDirectory" ;;
 	*) tar -xf "$Archive" -C "$SourceDirectory" --strip-components=1 ;;
 esac
 
