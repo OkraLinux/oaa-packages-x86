@@ -38,6 +38,13 @@ Archive="$WorkRoot/$(basename "$Url")"
 rm -rf "$WorkRoot"
 mkdir -p "$WorkRoot" "$OutputDirectory"
 
+export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-1700000000}"
+export LC_ALL=C
+export TZ=UTC
+export CFLAGS="-O2 -fPIC -fstack-protector-strong -D_FORTIFY_SOURCE=2 -fno-plt -Wformat -Werror=format-security"
+export CXXFLAGS="$CFLAGS"
+export LDFLAGS="-Wl,-z,relro,-z,now -Wl,-z,noexecstack"
+
 echo "== fetching source"
 curl -fsSL --http1.1 --retry 5 --retry-delay 3 --retry-all-errors -o "$Archive" "$Url"
 SourceSum="$(sha256sum "$Archive" | awk '{print $1}')"
@@ -50,6 +57,7 @@ fi
 mkdir -p "$SourceDirectory"
 case "${ArchiveFormat:-auto}" in
 	lz) lzip -dc "$Archive" | tar -xf - -C "$SourceDirectory" --strip-components=1 ;;
+	plain) cp -f "$Archive" "$SourceDirectory/" ;;
 	*) tar -xf "$Archive" -C "$SourceDirectory" --strip-components=1 ;;
 esac
 
@@ -118,7 +126,10 @@ PackageOutput="$ArtifactDirectory/$Name"
 rm -rf "$PackageOutput"
 mkdir -p "$PackageOutput"
 cd "$PackageDirectory"
-tar --zstd -cf "$PackageOutput/$ArchiveName" meta.yaml rootfs scripts
+tar --zstd -cf "$PackageOutput/$ArchiveName" \
+	--sort=name --mtime="@${SOURCE_DATE_EPOCH}" --clamp-mtime \
+	--owner=0 --group=0 --numeric-owner \
+	meta.yaml rootfs scripts
 cd "$PackageOutput"
 sha256sum "$ArchiveName" > "${ArchiveName}.sha256"
 
